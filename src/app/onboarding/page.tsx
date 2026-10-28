@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 const STEPS = [
   { title: "What's your name?", field: "name", placeholder: "Your name", type: "text", emoji: "👋", required: true },
   { title: "What grade or level are you in?", field: "grade_level", placeholder: "e.g. 10th grade, College sophomore, Master's", type: "text", emoji: "🎓" },
+  { title: "What subjects do you have?", field: "subjects", placeholder: "e.g. Math, English, Biology, History (comma separated)", type: "textarea", emoji: "📚" },
   { title: "What are your study goals?", field: "study_goals", placeholder: "e.g. Pass all exams, Get into med school, Learn to code", type: "textarea", emoji: "🎯" },
   { title: "What subjects are you strongest in?", field: "strong_subjects", placeholder: "e.g. Math, History, Art", type: "text", emoji: "💪" },
   { title: "What subjects do you find hardest?", field: "weak_subjects", placeholder: "e.g. Chemistry, Physics, Literature", type: "text", emoji: "🧗" },
@@ -42,6 +43,8 @@ export default function Onboarding() {
   const canNext = current.required ? !!data[current.field]?.trim() : true;
   const progress = ((step + 1) / STEPS.length) * 100;
 
+  const COURSE_COLORS = ["#7c3aed", "#06b6d4", "#10b981", "#f59e0b", "#ef4444", "#ec4899", "#3b82f6", "#8b5cf6", "#14b8a6", "#f97316"];
+
   async function finish() {
     setSaving(true);
     await fetch("/api/profile", {
@@ -49,6 +52,16 @@ export default function Onboarding() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+    if (data.subjects?.trim()) {
+      const subjects = data.subjects.split(",").map(s => s.trim()).filter(Boolean);
+      for (let i = 0; i < subjects.length; i++) {
+        await fetch("/api/courses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: subjects[i], color: COURSE_COLORS[i % COURSE_COLORS.length] }),
+        });
+      }
+    }
     router.push("/dashboard");
   }
 

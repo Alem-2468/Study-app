@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import MaterialsTab from "./MaterialsTab";
@@ -137,6 +137,8 @@ export default function Dashboard() {
   const [settingsForm, setSettingsForm] = useState<{ provider: string; base_url: string; api_key: string; model: string }>({ provider: "groq", base_url: "", api_key: "", model: "" });
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState("");
+  const [chatUploading, setChatUploading] = useState("");
+  const chatFileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     const [c, a, e, s] = await Promise.all([
@@ -300,6 +302,64 @@ export default function Dashboard() {
       }
     } catch { setChatMessages(prev => [...prev, { role: "assistant", content: "Failed to get response. Check your AI settings in the Settings tab." }]); }
     finally { setChatLoading(false); setChatMode("chat"); }
+  }
+
+  async function handleChatFileUpload(file: File) {
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    setChatUploading(`Processing ${file.name}...`);
+    try {
+      let text = "";
+      if (ext === "pdf") {
+        const pdfjs = await import("pdfjs-dist");
+        pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+        const buf = await file.arrayBuffer();
+        const pdf = await pdfjs.getDocument({ data: buf }).promise;
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          text += content.items.map((item: unknown) => (item as { str?: string }).str ?? "").join(" ") + "\n\n";
+        }
+        if (!text.trim()) throw new Error("No text found in PDF.");
+      } else if (ext === "docx") {
+        const mammoth = await import("mammoth");
+        const buf = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer: buf });
+        text = result.value;
+        if (!text.trim()) throw new Error("No text found in document.");
+      } else if (["jpg", "jpeg", "png", "webp", "gif"].includes(ext ?? "")) {
+        const imageCompression = (await import("browser-image-compression")).default;
+        const compressed = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 2048 });
+        const reader = new FileReader();
+        const base64 = await new Promise<string>((resolve) => {
+          reader.onload = () => resolve((reader.result as string).split(",")[1]);
+          reader.readAsDataURL(compressed);
+        });
+        const res = await fetch("/api/materials/vision", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image_base64: base64, mime_type: file.type }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        text = data.text;
+      } else {
+        throw new Error(`Unsupported file: .${ext}`);
+      }
+
+      const title = file.name.replace(/\.\w+$/, "");
+      const sourceType = ext === "pdf" ? "pdf" : ext === "docx" ? "docx" : "image";
+      await fetch("/api/materials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, content: text, source_type: sourceType }),
+      });
+
+      setChatUploading("");
+      setChatInput(`I just uploaded "${title}". Summarize the key points from it.`);
+    } catch (e) {
+      setChatUploading("");
+      setChatInput(`Error uploading file: ${e instanceof Error ? e.message : "Upload failed"}`);
+    }
   }
 
   const chatEndRef = useCallback((node: HTMLDivElement | null) => {
@@ -919,7 +979,23 @@ export default function Dashboard() {
                    "📋 Paste material below and I'll summarize the key points"}
                 </div>
               )}
+              {chatUploading && (
+                <div className="mb-2 flex items-center gap-3 p-3 rounded-xl" style={{ background: "var(--muted)" }}>
+                  <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs font-medium">{chatUploading}</span>
+                </div>
+              )}
               <form onSubmit={handleChat} className="flex gap-2 items-end pb-2">
+                <input ref={chatFileRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp,.gif" className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleChatFileUpload(f); e.target.value = ""; }} />
+                <button type="button" onClick={() => chatFileRef.current?.click()} disabled={chatLoading || !!chatUploading}
+                  className="h-11 w-11 rounded-xl flex items-center justify-center transition-all hover:opacity-80 disabled:opacity-40 shrink-0"
+                  style={{ background: "var(--card)", border: "1px solid var(--card-border)" }}
+                  title="Upload a file (PDF, DOCX, image)">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+                  </svg>
+                </button>
                 {chatMode === "chat" ? (
                   <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)}
                     placeholder="Tell me about your studies, ask questions, or manage your planner..."
