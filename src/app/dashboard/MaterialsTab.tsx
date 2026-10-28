@@ -23,7 +23,7 @@ const SOURCE_ICONS: Record<string, string> = {
   pdf: "📄", image: "🖼️", docx: "📝", url: "🔗", youtube: "▶️", note: "📒",
 };
 
-export default function MaterialsTab({ courses, exams }: { courses: Course[]; exams: Exam[] }) {
+export default function MaterialsTab({ courses, exams, onAskAI }: { courses: Course[]; exams: Exam[]; onAskAI?: (prompt: string) => void }) {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
@@ -369,24 +369,51 @@ export default function MaterialsTab({ courses, exams }: { courses: Course[]; ex
                   )}
                 </div>
               </div>
-              {m.source_url && (
-                <a
-                  href={m.source_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                  style={{ background: "var(--muted)", color: "var(--muted-fg)" }}
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {onAskAI && (
+                  <>
+                    <button
+                      onClick={() => onAskAI(`Summarize my material "${m.title}"`)}
+                      className="text-[11px] px-2 py-1 rounded-lg font-medium"
+                      style={{ background: "var(--muted)", color: "var(--muted-fg)" }}
+                    >
+                      Summarize
+                    </button>
+                    <button
+                      onClick={() => onAskAI(`Quiz me on my material "${m.title}"`)}
+                      className="text-[11px] px-2 py-1 rounded-lg font-medium"
+                      style={{ background: "var(--muted)", color: "var(--muted-fg)" }}
+                    >
+                      Quiz me
+                    </button>
+                    <button
+                      onClick={() => onAskAI(`Create a study guide from my material "${m.title}"`)}
+                      className="text-[11px] px-2 py-1 rounded-lg font-medium"
+                      style={{ background: "var(--muted)", color: "var(--muted-fg)" }}
+                    >
+                      Study guide
+                    </button>
+                  </>
+                )}
+                {m.source_url && (
+                  <a
+                    href={m.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] px-2 py-1 rounded-lg font-medium"
+                    style={{ background: "var(--muted)", color: "var(--muted-fg)" }}
+                  >
+                    Source ↗
+                  </a>
+                )}
+                <button
+                  onClick={() => deleteMaterial(m.id)}
+                  className="text-[11px] px-2 py-1 rounded-lg font-medium"
+                  style={{ color: "var(--danger)" }}
                 >
-                  Source ↗
-                </a>
-              )}
-              <button
-                onClick={() => deleteMaterial(m.id)}
-                className="text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                style={{ color: "var(--danger)" }}
-              >
-                Delete
-              </button>
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
         </div>

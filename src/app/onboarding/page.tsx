@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 const STEPS = [
   { title: "What's your name?", field: "name", placeholder: "Your name", type: "text", emoji: "👋", required: true },
   { title: "What grade or level are you in?", field: "grade_level", placeholder: "e.g. 10th grade, College sophomore, Master's", type: "text", emoji: "🎓" },
-  { title: "What school do you go to?", field: "school", placeholder: "School or university name", type: "text", emoji: "🏫" },
   { title: "What are your study goals?", field: "study_goals", placeholder: "e.g. Pass all exams, Get into med school, Learn to code", type: "textarea", emoji: "🎯" },
   { title: "What subjects are you strongest in?", field: "strong_subjects", placeholder: "e.g. Math, History, Art", type: "text", emoji: "💪" },
   { title: "What subjects do you find hardest?", field: "weak_subjects", placeholder: "e.g. Chemistry, Physics, Literature", type: "text", emoji: "🧗" },

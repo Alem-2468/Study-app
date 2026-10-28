@@ -824,7 +824,7 @@ export default function Dashboard() {
 
           {/* MATERIALS */}
           {tab === "materials" && (
-            <MaterialsTab courses={courses} exams={exams} />
+            <MaterialsTab courses={courses} exams={exams} onAskAI={(prompt) => { setChatInput(prompt); setTab("ai"); }} />
           )}
 
           {/* AI TOOLS */}
