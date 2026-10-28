@@ -30,7 +30,7 @@ const PRESETS: Record<string, { base_url: string; models: string[]; default_mode
   },
   gemini: {
     base_url: "https://generativelanguage.googleapis.com/v1beta/openai",
-    models: ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.5-pro"],
+    models: ["gemini-3.8-flash"],
     default_model: "gemini-3.8-flash",
   },
   custom: {

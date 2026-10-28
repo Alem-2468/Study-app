@@ -222,7 +222,7 @@ export async function POST(req: NextRequest) {
   try {
     const { client, model } = await getAiClient();
     const systemPrompt = buildSystemPrompt(ctx) + materialContext;
-    const res = await client.chat.completions.create({
+    const chatReq = () => client.chat.completions.create({
       model,
       messages: [
         { role: "system", content: systemPrompt },
@@ -230,6 +230,17 @@ export async function POST(req: NextRequest) {
       ],
       max_tokens: 2000,
     });
+    let res;
+    try {
+      res = await chatReq();
+    } catch (retryErr) {
+      if (retryErr instanceof Error && retryErr.message.includes("503")) {
+        await new Promise(r => setTimeout(r, 2000));
+        res = await chatReq();
+      } else {
+        throw retryErr;
+      }
+    }
 
     const reply = res.choices[0]?.message?.content ?? "Sorry, I couldn't generate a response.";
 
