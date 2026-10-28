@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb, initDb } from "@/lib/db";
 
 export async function GET() {
-  const db = getDb();
-  await initDb();
-  const result = await db.execute("SELECT * FROM student_profile WHERE id = 1");
-  return NextResponse.json(result.rows[0] ?? null);
+  try {
+    const db = getDb();
+    await initDb();
+    const result = await db.execute("SELECT * FROM student_profile WHERE id = 1");
+    return NextResponse.json(result.rows[0] ?? null);
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "DB error" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {

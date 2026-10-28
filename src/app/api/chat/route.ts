@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, initDb } from "@/lib/db";
-import OpenAI from "openai";
+import { getAiClient } from "@/lib/ai";
 import crypto from "crypto";
-
-const client = new OpenAI({
-  baseURL: process.env.AI_BASE_URL ?? "http://localhost:20128/v1",
-  apiKey: process.env.AI_API_KEY ?? "sk-04eda789aefd6b0b-6bccb7-347e3457",
-});
 
 interface ProfileRow { name: string; grade_level?: string; school?: string; study_goals?: string; strong_subjects?: string; weak_subjects?: string; preferred_style?: string; daily_hours?: string; notes?: string }
 interface CourseRow { id: string; name: string; color: string; teacher_name?: string }
@@ -197,8 +192,9 @@ export async function POST(req: NextRequest) {
   }));
 
   try {
+    const { client, model } = await getAiClient();
     const res = await client.chat.completions.create({
-      model: process.env.AI_MODEL ?? "auto",
+      model,
       messages: [
         { role: "system", content: buildSystemPrompt(ctx) },
         ...cleanHistory,

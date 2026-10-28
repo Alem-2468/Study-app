@@ -9,7 +9,7 @@ interface Assignment { id: string; course_id: string; title: string; description
 interface Exam { id: string; course_id: string; title: string; date: string; time?: string; topics?: string; difficulty: string; status: string; course_name: string; course_color: string }
 interface Session { id: string; course_id?: string; title: string; date: string; start_time?: string; duration_minutes: number; type: string; completed: number; course_name?: string; course_color?: string }
 
-type Tab = "overview" | "courses" | "assignments" | "exams" | "schedule" | "ai";
+type Tab = "overview" | "courses" | "assignments" | "exams" | "schedule" | "ai" | "settings";
 
 const NAV: { key: Tab; label: string; icon: string }[] = [
   { key: "overview", label: "Overview", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4" },
@@ -18,6 +18,7 @@ const NAV: { key: Tab; label: string; icon: string }[] = [
   { key: "exams", label: "Exams", icon: "M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.62 48.62 0 0112 20.904a48.62 48.62 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342" },
   { key: "schedule", label: "Schedule", icon: "M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" },
   { key: "ai", label: "AI Chat", icon: "M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" },
+  { key: "settings", label: "Settings", icon: "M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z M15 12a3 3 0 11-6 0 3 3 0 016 0z" },
 ];
 
 function Icon({ d, className = "w-5 h-5" }: { d: string; className?: string }) {
@@ -129,15 +130,23 @@ export default function Dashboard() {
   const [schedHours, setSchedHours] = useState("3");
   const [schedLoading, setSchedLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [aiSettings, setAiSettings] = useState<{ provider: string; base_url: string; api_key: string; model: string; has_key: boolean } | null>(null);
+  const [aiPresets, setAiPresets] = useState<Record<string, { base_url: string; models: string[]; default_model: string }>>({});
+  const [settingsForm, setSettingsForm] = useState<{ provider: string; base_url: string; api_key: string; model: string }>({ provider: "groq", base_url: "", api_key: "", model: "" });
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsMsg, setSettingsMsg] = useState("");
 
   const load = useCallback(async () => {
     const [c, a, e, s] = await Promise.all([
-      fetch("/api/courses").then(r => r.json()),
-      fetch("/api/assignments").then(r => r.json()),
-      fetch("/api/exams").then(r => r.json()),
-      fetch("/api/schedule").then(r => r.json()),
+      fetch("/api/courses").then(r => r.json()).catch(() => []),
+      fetch("/api/assignments").then(r => r.json()).catch(() => []),
+      fetch("/api/exams").then(r => r.json()).catch(() => []),
+      fetch("/api/schedule").then(r => r.json()).catch(() => []),
     ]);
-    setCourses(c); setAssignments(a); setExams(e); setSessions(s);
+    setCourses(Array.isArray(c) ? c : []);
+    setAssignments(Array.isArray(a) ? a : []);
+    setExams(Array.isArray(e) ? e : []);
+    setSessions(Array.isArray(s) ? s : []);
   }, []);
 
   useEffect(() => {
@@ -151,8 +160,15 @@ export default function Dashboard() {
       return d.toISOString().split("T")[0];
     }));
     load();
-    fetch("/api/profile").then(r => r.json()).then(p => setHasProfile(!!p));
-    fetch("/api/chat").then(r => r.json()).then(msgs => { if (Array.isArray(msgs)) setChatMessages(msgs); });
+    fetch("/api/profile").then(r => r.json()).then(p => setHasProfile(!!p && !p.error)).catch(() => setHasProfile(false));
+    fetch("/api/chat").then(r => r.json()).then(msgs => { if (Array.isArray(msgs)) setChatMessages(msgs); }).catch(() => {});
+    fetch("/api/ai-settings").then(r => r.json()).then(data => {
+      setAiPresets(data.presets ?? {});
+      if (data.settings) {
+        setAiSettings(data.settings);
+        setSettingsForm({ provider: data.settings.provider, base_url: data.settings.base_url, api_key: "", model: data.settings.model });
+      }
+    });
   }, [load]);
 
   function daysUntil(d: string) {
@@ -280,7 +296,7 @@ export default function Dashboard() {
         const result = data.result ?? data.error ?? "No response";
         setChatMessages(prev => [...prev, { role: "assistant", content: result }]);
       }
-    } catch { setChatMessages(prev => [...prev, { role: "assistant", content: "Failed to get response. Check if OmniRoute is running." }]); }
+    } catch { setChatMessages(prev => [...prev, { role: "assistant", content: "Failed to get response. Check your AI settings in the Settings tab." }]); }
     finally { setChatLoading(false); setChatMode("chat"); }
   }
 
@@ -921,6 +937,174 @@ export default function Dashboard() {
                   )}
                 </button>
               </form>
+            </div>
+          )}
+          {/* SETTINGS */}
+          {tab === "settings" && (
+            <div className="max-w-xl mx-auto space-y-6 animate-fadeIn">
+              <Card>
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-gradient-to-br from-purple-500 to-cyan-500">🤖</div>
+                  <div>
+                    <h3 className="font-bold text-sm">AI Provider Settings</h3>
+                    <p className="text-[11px]" style={{ color: "var(--muted-fg)" }}>Connect your own AI — Claude, ChatGPT, Gemini, Groq, or any OpenAI-compatible API</p>
+                  </div>
+                </div>
+
+                {aiSettings?.has_key && (
+                  <div className="mb-4 p-3 rounded-xl flex items-center gap-2 text-xs" style={{ background: "var(--success-light)", color: "var(--success)" }}>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                    Connected: {aiSettings.provider.toUpperCase()} — {aiSettings.model}
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-semibold mb-1.5 block" style={{ color: "var(--muted-fg)" }}>Provider</label>
+                    <div className="grid grid-cols-5 gap-2">
+                      {[
+                        { key: "groq", label: "Groq", desc: "Free" },
+                        { key: "openai", label: "OpenAI", desc: "GPT" },
+                        { key: "anthropic", label: "Claude", desc: "Anthropic" },
+                        { key: "gemini", label: "Gemini", desc: "Google" },
+                        { key: "custom", label: "Custom", desc: "Any API" },
+                      ].map(p => (
+                        <button key={p.key}
+                          onClick={() => {
+                            const preset = aiPresets[p.key];
+                            setSettingsForm({
+                              provider: p.key,
+                              base_url: preset?.base_url ?? "",
+                              api_key: "",
+                              model: preset?.default_model ?? "",
+                            });
+                          }}
+                          className={`rounded-xl p-2.5 text-center transition-all border ${settingsForm.provider === p.key ? "ring-2" : ""}`}
+                          style={{
+                            background: settingsForm.provider === p.key ? "var(--accent-light)" : "var(--input-bg)",
+                            borderColor: settingsForm.provider === p.key ? "var(--accent)" : "var(--input-border)",
+                            "--tw-ring-color": "var(--accent)",
+                          } as React.CSSProperties}>
+                          <div className="text-xs font-semibold">{p.label}</div>
+                          <div className="text-[10px]" style={{ color: "var(--muted-fg)" }}>{p.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold mb-1.5 block" style={{ color: "var(--muted-fg)" }}>API Key</label>
+                    <Input
+                      type="password"
+                      placeholder={aiSettings?.has_key ? "Key saved (enter new to change)" : "Paste your API key"}
+                      value={settingsForm.api_key}
+                      onChange={e => setSettingsForm(p => ({ ...p, api_key: e.target.value }))}
+                    />
+                    <p className="text-[10px] mt-1" style={{ color: "var(--muted-fg)" }}>
+                      {settingsForm.provider === "groq" ? "Get a free key at console.groq.com" :
+                       settingsForm.provider === "openai" ? "Get your key at platform.openai.com/api-keys" :
+                       settingsForm.provider === "anthropic" ? "Get your key at console.anthropic.com" :
+                       settingsForm.provider === "gemini" ? "Get your key at aistudio.google.com/apikey" :
+                       "Enter the API key for your provider"}
+                    </p>
+                  </div>
+
+                  {settingsForm.provider === "custom" ? (
+                    <>
+                      <div>
+                        <label className="text-xs font-semibold mb-1.5 block" style={{ color: "var(--muted-fg)" }}>Base URL</label>
+                        <Input
+                          placeholder="https://api.example.com/v1"
+                          value={settingsForm.base_url}
+                          onChange={e => setSettingsForm(p => ({ ...p, base_url: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold mb-1.5 block" style={{ color: "var(--muted-fg)" }}>Model Name</label>
+                        <Input
+                          placeholder="model-name"
+                          value={settingsForm.model}
+                          onChange={e => setSettingsForm(p => ({ ...p, model: e.target.value }))}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <label className="text-xs font-semibold mb-1.5 block" style={{ color: "var(--muted-fg)" }}>Model</label>
+                      <Select
+                        value={settingsForm.model}
+                        onChange={e => setSettingsForm(p => ({ ...p, model: e.target.value }))}>
+                        {(aiPresets[settingsForm.provider]?.models ?? []).map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </Select>
+                    </div>
+                  )}
+
+                  {settingsMsg && (
+                    <div className="p-3 rounded-xl text-xs" style={{ background: settingsMsg.includes("Error") ? "var(--danger-light)" : "var(--success-light)", color: settingsMsg.includes("Error") ? "var(--danger)" : "var(--success)" }}>
+                      {settingsMsg}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-1">
+                    <Btn
+                      disabled={settingsSaving || (!settingsForm.api_key && !aiSettings?.has_key)}
+                      onClick={async () => {
+                        setSettingsSaving(true);
+                        setSettingsMsg("");
+                        try {
+                          const body: Record<string, string> = {
+                            provider: settingsForm.provider,
+                            base_url: settingsForm.provider === "custom" ? settingsForm.base_url : (aiPresets[settingsForm.provider]?.base_url ?? ""),
+                            model: settingsForm.model,
+                          };
+                          if (settingsForm.api_key) body.api_key = settingsForm.api_key;
+                          const res = await fetch("/api/ai-settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+                          if (res.ok) {
+                            setSettingsMsg("Saved! AI features will now use your provider.");
+                            setSettingsForm(p => ({ ...p, api_key: "" }));
+                            const data = await fetch("/api/ai-settings").then(r => r.json());
+                            if (data.settings) setAiSettings(data.settings);
+                          } else {
+                            setSettingsMsg("Error: Failed to save settings");
+                          }
+                        } catch { setSettingsMsg("Error: Network error"); }
+                        finally { setSettingsSaving(false); }
+                      }}>
+                      {settingsSaving ? "Saving..." : "Save Settings"}
+                    </Btn>
+                    {aiSettings?.has_key && (
+                      <Btn variant="danger" size="sm" onClick={async () => {
+                        await fetch("/api/ai-settings", { method: "DELETE" });
+                        setAiSettings(null);
+                        setSettingsForm({ provider: "groq", base_url: "", api_key: "", model: "llama-3.3-70b-versatile" });
+                        setSettingsMsg("AI settings cleared. Using server defaults.");
+                      }}>
+                        Disconnect
+                      </Btn>
+                    )}
+                  </div>
+                </div>
+              </Card>
+
+              <Card>
+                <h3 className="font-semibold text-sm mb-3">How It Works</h3>
+                <div className="space-y-3 text-xs" style={{ color: "var(--muted-fg)" }}>
+                  <div className="flex gap-3">
+                    <span className="text-base">1️⃣</span>
+                    <p><strong className="text-foreground">Pick a provider</strong> — Groq is free and fast. Claude, ChatGPT, and Gemini need a paid API key.</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="text-base">2️⃣</span>
+                    <p><strong className="text-foreground">Paste your API key</strong> — It&apos;s stored in your database, only used for AI requests.</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="text-base">3️⃣</span>
+                    <p><strong className="text-foreground">Choose a model</strong> — Each provider has different models. Faster models cost less.</p>
+                  </div>
+                </div>
+              </Card>
             </div>
           )}
         </main>

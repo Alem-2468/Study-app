@@ -3,15 +3,19 @@ import { getDb, initDb } from "@/lib/db";
 import { randomUUID } from "crypto";
 
 export async function GET() {
-  const db = getDb();
-  await initDb();
-  const result = await db.execute(
-    `SELECT s.*, c.name as course_name, c.color as course_color
-     FROM study_sessions s
-     LEFT JOIN courses c ON s.course_id = c.id
-     ORDER BY s.date ASC, s.start_time ASC`
-  );
-  return NextResponse.json(result.rows);
+  try {
+    const db = getDb();
+    await initDb();
+    const result = await db.execute(
+      `SELECT s.*, c.name as course_name, c.color as course_color
+       FROM study_sessions s
+       LEFT JOIN courses c ON s.course_id = c.id
+       ORDER BY s.date ASC, s.start_time ASC`
+    );
+    return NextResponse.json(result.rows);
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "DB error" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {

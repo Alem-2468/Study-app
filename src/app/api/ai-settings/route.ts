@@ -1,0 +1,92 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getDb, initDb } from "@/lib/db";
+
+interface AiSettingsRow {
+  id: number;
+  provider: string;
+  base_url: string;
+  api_key: string | null;
+  model: string;
+  updated_at: string;
+}
+
+const PRESETS: Record<string, { base_url: string; models: string[]; default_model: string }> = {
+  groq: {
+    base_url: "https://api.groq.com/openai/v1",
+    models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it", "mixtral-8x7b-32768"],
+    default_model: "llama-3.3-70b-versatile",
+  },
+  openai: {
+    base_url: "https://api.openai.com/v1",
+    models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"],
+    default_model: "gpt-4o-mini",
+  },
+  anthropic: {
+    base_url: "https://api.anthropic.com/v1",
+    models: ["claude-sonnet-4-20250514", "claude-haiku-4-20250414"],
+    default_model: "claude-sonnet-4-20250514",
+  },
+  gemini: {
+    base_url: "https://generativelanguage.googleapis.com/v1beta/openai",
+    models: ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"],
+    default_model: "gemini-2.0-flash",
+  },
+  custom: {
+    base_url: "",
+    models: [],
+    default_model: "",
+  },
+};
+
+export async function GET() {
+  const db = getDb();
+  await initDb();
+  const result = await db.execute("SELECT * FROM ai_settings WHERE id = 1");
+  const settings = result.rows[0] as unknown as AiSettingsRow | undefined;
+
+  return NextResponse.json({
+    settings: settings
+      ? { provider: settings.provider, base_url: settings.base_url, api_key: settings.api_key ? "••••" + settings.api_key.slice(-4) : null, model: settings.model, has_key: !!settings.api_key }
+      : null,
+    presets: PRESETS,
+  });
+}
+
+export async function POST(req: NextRequest) {
+  const { provider, base_url, api_key, model } = await req.json();
+  if (!provider || !base_url || !model) {
+    return NextResponse.json({ error: "Provider, base URL, and model are required" }, { status: 400 });
+  }
+
+  const db = getDb();
+  await initDb();
+
+  const existing = await db.execute("SELECT id FROM ai_settings WHERE id = 1");
+  if (existing.rows.length > 0) {
+    if (api_key) {
+      await db.execute({
+        sql: "UPDATE ai_settings SET provider = ?, base_url = ?, api_key = ?, model = ?, updated_at = datetime('now') WHERE id = 1",
+        args: [provider, base_url, api_key, model],
+      });
+    } else {
+      await db.execute({
+        sql: "UPDATE ai_settings SET provider = ?, base_url = ?, model = ?, updated_at = datetime('now') WHERE id = 1",
+        args: [provider, base_url, model],
+      });
+    }
+  } else {
+    await db.execute({
+      sql: "INSERT INTO ai_settings (id, provider, base_url, api_key, model) VALUES (1, ?, ?, ?, ?)",
+      args: [provider, base_url, api_key ?? null, model],
+    });
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE() {
+  const db = getDb();
+  await initDb();
+  await db.execute("DELETE FROM ai_settings WHERE id = 1");
+  return NextResponse.json({ ok: true });
+}

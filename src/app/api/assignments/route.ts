@@ -3,13 +3,17 @@ import { getDb, initDb } from "@/lib/db";
 import { randomUUID } from "crypto";
 
 export async function GET(req: NextRequest) {
-  const db = getDb();
-  await initDb();
-  const courseId = req.nextUrl.searchParams.get("courseId");
-  const result = courseId
-    ? await db.execute({ sql: "SELECT a.*, c.name as course_name, c.color as course_color FROM assignments a JOIN courses c ON a.course_id = c.id WHERE a.course_id = ? ORDER BY a.due_date ASC", args: [courseId] })
-    : await db.execute("SELECT a.*, c.name as course_name, c.color as course_color FROM assignments a JOIN courses c ON a.course_id = c.id ORDER BY a.due_date ASC");
-  return NextResponse.json(result.rows);
+  try {
+    const db = getDb();
+    await initDb();
+    const courseId = req.nextUrl.searchParams.get("courseId");
+    const result = courseId
+      ? await db.execute({ sql: "SELECT a.*, c.name as course_name, c.color as course_color FROM assignments a JOIN courses c ON a.course_id = c.id WHERE a.course_id = ? ORDER BY a.due_date ASC", args: [courseId] })
+      : await db.execute("SELECT a.*, c.name as course_name, c.color as course_color FROM assignments a JOIN courses c ON a.course_id = c.id ORDER BY a.due_date ASC");
+    return NextResponse.json(result.rows);
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "DB error" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {

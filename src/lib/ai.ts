@@ -1,13 +1,33 @@
 import OpenAI from "openai";
+import { getDb, initDb } from "@/lib/db";
 
-const client = new OpenAI({
-  baseURL: process.env.AI_BASE_URL ?? "http://localhost:20128/v1",
-  apiKey: process.env.AI_API_KEY ?? "sk-04eda789aefd6b0b-6bccb7-347e3457",
-});
+interface AiSettingsRow { provider: string; base_url: string; api_key: string | null; model: string }
 
-const MODEL = process.env.AI_MODEL ?? "auto";
+async function getAiConfig() {
+  await initDb();
+  const db = getDb();
+  const res = await db.execute("SELECT provider, base_url, api_key, model FROM ai_settings WHERE id = 1");
+  const row = res.rows[0] as unknown as AiSettingsRow | undefined;
+  if (row?.api_key && row.base_url) {
+    return { baseURL: row.base_url, apiKey: row.api_key, model: row.model };
+  }
+  return {
+    baseURL: process.env.AI_BASE_URL ?? "http://localhost:20128/v1",
+    apiKey: process.env.AI_API_KEY ?? "sk-no-key",
+    model: process.env.AI_MODEL ?? "auto",
+  };
+}
+
+export async function getAiClient() {
+  const cfg = await getAiConfig();
+  return {
+    client: new OpenAI({ baseURL: cfg.baseURL, apiKey: cfg.apiKey }),
+    model: cfg.model,
+  };
+}
 
 export async function quizFromNotes(notes: string): Promise<string> {
+  const { client, model: MODEL } = await getAiClient();
   const res = await client.chat.completions.create({
     model: MODEL,
     messages: [
@@ -24,6 +44,7 @@ export async function quizFromNotes(notes: string): Promise<string> {
 }
 
 export async function explainTopic(topic: string, context?: string): Promise<string> {
+  const { client, model: MODEL } = await getAiClient();
   const res = await client.chat.completions.create({
     model: MODEL,
     messages: [
@@ -45,6 +66,7 @@ export async function explainTopic(topic: string, context?: string): Promise<str
 }
 
 export async function summarizeMaterial(content: string): Promise<string> {
+  const { client, model: MODEL } = await getAiClient();
   const res = await client.chat.completions.create({
     model: MODEL,
     messages: [
@@ -80,6 +102,7 @@ export interface ScheduleBlock {
 
 export async function generateSchedule(input: ScheduleInput): Promise<ScheduleBlock[]> {
   const today = input.startDate;
+  const { client, model: MODEL } = await getAiClient();
   const res = await client.chat.completions.create({
     model: MODEL,
     messages: [
