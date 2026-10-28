@@ -27,12 +27,14 @@ async function getContext() {
     ORDER BY e.date ASC
   `);
   const exams = examsRes.rows as unknown as ExamRow[];
-  return { profile, courses, assignments, exams };
+  const notesRes = await db.execute("SELECT context_notes FROM ai_settings WHERE id = 1");
+  const handoffNotes = (notesRes.rows[0] as unknown as { context_notes: string | null } | undefined)?.context_notes ?? null;
+  return { profile, courses, assignments, exams, handoffNotes };
 }
 
 function buildSystemPrompt(ctx: Awaited<ReturnType<typeof getContext>>) {
   const today = new Date().toISOString().split("T")[0];
-  const { profile, courses, assignments, exams } = ctx;
+  const { profile, courses, assignments, exams, handoffNotes } = ctx;
 
   let prompt = `You are a friendly, smart study assistant for a student. Today is ${today}.
 
@@ -69,6 +71,14 @@ ${profile.notes ? `- Notes: ${profile.notes}` : ""}
     prompt += `## Exams\n`;
     exams.forEach(e => { prompt += `- "${e.title}" for ${e.course_name ?? "unknown"} on ${e.date}${e.topics ? `, topics: ${e.topics}` : ""} (${e.difficulty}, id: ${e.id})\n`; });
     prompt += "\n";
+  }
+
+  if (handoffNotes) {
+    prompt += `## Notes from Previous AI Tutor
+The student previously used a different AI model. Here's what the previous tutor learned about them — use this to continue seamlessly:
+${handoffNotes}
+
+`;
   }
 
   prompt += `## Your Capabilities

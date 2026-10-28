@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, initDb } from "@/lib/db";
+import { getAiClient } from "@/lib/ai";
 
 interface AiSettingsRow {
   id: number;
@@ -7,6 +8,7 @@ interface AiSettingsRow {
   base_url: string;
   api_key: string | null;
   model: string;
+  context_notes: string | null;
   updated_at: string;
 }
 
@@ -52,6 +54,38 @@ export async function GET() {
   });
 }
 
+async function generateHandoff(): Promise<string | null> {
+  const db = getDb();
+  const msgs = await db.execute("SELECT role, content FROM chat_messages ORDER BY created_at ASC LIMIT 200");
+  if (msgs.rows.length < 3) return null;
+
+  try {
+    const { client, model: m } = await getAiClient();
+    const chatLog = (msgs.rows as unknown as { role: string; content: string }[])
+      .map(r => `${r.role}: ${r.content}`).join("\n");
+
+    const res = await client.chat.completions.create({
+      model: m,
+      messages: [
+        {
+          role: "system",
+          content: `You are handing off a student to a new AI tutor. Summarize ONLY the important things the new tutor needs to know. Be concise (under 300 words). Include:
+- Student's personality, communication style, how they like to learn
+- Subjects they struggle with or excel at (beyond what's in their profile)
+- Any promises or ongoing plans you made with them
+- Study strategies that worked or didn't work for them
+- Anything else a new tutor would need to continue seamlessly`,
+        },
+        { role: "user", content: `Here is the full conversation history:\n\n${chatLog}` },
+      ],
+      max_tokens: 500,
+    });
+    return res.choices[0]?.message?.content ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   const { provider, base_url, api_key, model } = await req.json();
   if (!provider || !base_url || !model) {
@@ -61,27 +95,29 @@ export async function POST(req: NextRequest) {
   const db = getDb();
   await initDb();
 
-  const existing = await db.execute("SELECT id FROM ai_settings WHERE id = 1");
+  const existing = await db.execute("SELECT id, provider FROM ai_settings WHERE id = 1");
+  const oldProvider = (existing.rows[0] as unknown as { provider: string } | undefined)?.provider;
+  const isSwitch = oldProvider && oldProvider !== provider;
+
+  let handoff: string | null = null;
+  if (isSwitch) {
+    handoff = await generateHandoff();
+  }
+
   if (existing.rows.length > 0) {
-    if (api_key) {
-      await db.execute({
-        sql: "UPDATE ai_settings SET provider = ?, base_url = ?, api_key = ?, model = ?, updated_at = datetime('now') WHERE id = 1",
-        args: [provider, base_url, api_key, model],
-      });
-    } else {
-      await db.execute({
-        sql: "UPDATE ai_settings SET provider = ?, base_url = ?, model = ?, updated_at = datetime('now') WHERE id = 1",
-        args: [provider, base_url, model],
-      });
-    }
+    const setClauses = ["provider = ?", "base_url = ?", "model = ?", "updated_at = datetime('now')"];
+    const args: (string | null)[] = [provider, base_url, model];
+    if (api_key) { setClauses.push("api_key = ?"); args.push(api_key); }
+    if (handoff) { setClauses.push("context_notes = ?"); args.push(handoff); }
+    await db.execute({ sql: `UPDATE ai_settings SET ${setClauses.join(", ")} WHERE id = 1`, args });
   } else {
     await db.execute({
-      sql: "INSERT INTO ai_settings (id, provider, base_url, api_key, model) VALUES (1, ?, ?, ?, ?)",
-      args: [provider, base_url, api_key ?? null, model],
+      sql: "INSERT INTO ai_settings (id, provider, base_url, api_key, model, context_notes) VALUES (1, ?, ?, ?, ?, ?)",
+      args: [provider, base_url, api_key ?? null, model, handoff],
     });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, handoff: !!handoff });
 }
 
 export async function DELETE() {

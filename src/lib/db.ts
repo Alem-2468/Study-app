@@ -24,8 +24,13 @@ export async function initDb() {
     "CREATE TABLE IF NOT EXISTS materials (id TEXT PRIMARY KEY, course_id TEXT, title TEXT NOT NULL, content TEXT, type TEXT DEFAULT 'note', created_at TEXT DEFAULT (datetime('now')))",
     "CREATE TABLE IF NOT EXISTS student_profile (id INTEGER PRIMARY KEY CHECK (id = 1), name TEXT NOT NULL, grade_level TEXT, school TEXT, study_goals TEXT, strong_subjects TEXT, weak_subjects TEXT, preferred_style TEXT DEFAULT 'balanced', daily_hours TEXT DEFAULT '2-3', notes TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))",
     "CREATE TABLE IF NOT EXISTS chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, role TEXT NOT NULL, content TEXT NOT NULL, actions_taken TEXT, created_at TEXT DEFAULT (datetime('now')))",
-    "CREATE TABLE IF NOT EXISTS ai_settings (id INTEGER PRIMARY KEY CHECK (id = 1), provider TEXT DEFAULT 'groq', base_url TEXT DEFAULT 'https://api.groq.com/openai/v1', api_key TEXT, model TEXT DEFAULT 'llama-3.3-70b-versatile', updated_at TEXT DEFAULT (datetime('now')))",
+    "CREATE TABLE IF NOT EXISTS ai_settings (id INTEGER PRIMARY KEY CHECK (id = 1), provider TEXT DEFAULT 'groq', base_url TEXT DEFAULT 'https://api.groq.com/openai/v1', api_key TEXT, model TEXT DEFAULT 'llama-3.3-70b-versatile', context_notes TEXT, updated_at TEXT DEFAULT (datetime('now')))",
   ], "write");
+  try {
+    await db.execute("ALTER TABLE ai_settings ADD COLUMN context_notes TEXT");
+  } catch {
+    // column already exists
+  }
   _initDone = true;
 }
 
