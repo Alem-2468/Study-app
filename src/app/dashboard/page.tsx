@@ -358,7 +358,12 @@ export default function Dashboard() {
       setChatInput(`I just uploaded "${title}". Summarize the key points from it.`);
     } catch (e) {
       setChatUploading("");
-      setChatInput(`Error uploading file: ${e instanceof Error ? e.message : "Upload failed"}`);
+      const errMsg = e instanceof Error ? e.message : "Upload failed";
+      if (errMsg.includes("image analysis") || errMsg.includes("must be a string")) {
+        setChatInput("Image uploads need a vision-capable AI model. Try uploading a PDF or DOCX instead.");
+      } else {
+        setChatInput(`Error uploading file: ${errMsg}`);
+      }
     }
   }
 
