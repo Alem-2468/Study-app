@@ -201,12 +201,31 @@ export async function POST(req: NextRequest) {
     content: m.role === "assistant" ? m.content.replace(/<action>[\s\S]*?<\/action>/g, "").trim() : m.content,
   }));
 
+  let materialContext = "";
+  try {
+    const keywords = message.replace(/[^\w\s]/g, "").split(/\s+/).filter((w: string) => w.length > 3).slice(0, 5).join(" ");
+    if (keywords) {
+      let chunks: { content: string; material_title: string }[] = [];
+      try {
+        const fts = await db.execute({ sql: "SELECT mc.content, m.title as material_title FROM material_chunks_fts fts JOIN material_chunks mc ON mc.id = fts.rowid JOIN materials m ON m.id = mc.material_id WHERE material_chunks_fts MATCH ? ORDER BY rank LIMIT 3", args: [keywords] });
+        chunks = fts.rows as unknown as { content: string; material_title: string }[];
+      } catch {
+        const like = await db.execute({ sql: "SELECT mc.content, m.title as material_title FROM material_chunks mc JOIN materials m ON m.id = mc.material_id WHERE mc.content LIKE ? LIMIT 3", args: [`%${keywords.split(" ")[0]}%`] });
+        chunks = like.rows as unknown as { content: string; material_title: string }[];
+      }
+      if (chunks.length > 0) {
+        materialContext = "\n\n## Relevant Study Materials\n" + chunks.map(c => `### From "${c.material_title}":\n${c.content.slice(0, 1500)}`).join("\n\n");
+      }
+    }
+  } catch { /* material search failed, continue without */ }
+
   try {
     const { client, model } = await getAiClient();
+    const systemPrompt = buildSystemPrompt(ctx) + materialContext;
     const res = await client.chat.completions.create({
       model,
       messages: [
-        { role: "system", content: buildSystemPrompt(ctx) },
+        { role: "system", content: systemPrompt },
         ...cleanHistory,
       ],
       max_tokens: 2000,

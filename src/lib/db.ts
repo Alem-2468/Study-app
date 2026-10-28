@@ -21,15 +21,16 @@ export async function initDb() {
     "CREATE TABLE IF NOT EXISTS assignments (id TEXT PRIMARY KEY, course_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT, type TEXT DEFAULT 'homework', due_date TEXT, due_time TEXT, status TEXT DEFAULT 'pending', priority TEXT DEFAULT 'medium', created_at TEXT DEFAULT (datetime('now')))",
     "CREATE TABLE IF NOT EXISTS exams (id TEXT PRIMARY KEY, course_id TEXT NOT NULL, title TEXT NOT NULL, date TEXT NOT NULL, time TEXT, topics TEXT, difficulty TEXT DEFAULT 'medium', status TEXT DEFAULT 'upcoming', created_at TEXT DEFAULT (datetime('now')))",
     "CREATE TABLE IF NOT EXISTS study_sessions (id TEXT PRIMARY KEY, course_id TEXT, exam_id TEXT, title TEXT NOT NULL, date TEXT NOT NULL, start_time TEXT, duration_minutes INTEGER DEFAULT 30, type TEXT DEFAULT 'study', completed INTEGER DEFAULT 0, notes TEXT, created_at TEXT DEFAULT (datetime('now')))",
-    "CREATE TABLE IF NOT EXISTS materials (id TEXT PRIMARY KEY, course_id TEXT, title TEXT NOT NULL, content TEXT, type TEXT DEFAULT 'note', created_at TEXT DEFAULT (datetime('now')))",
+    "CREATE TABLE IF NOT EXISTS materials (id TEXT PRIMARY KEY, course_id TEXT, exam_id TEXT, title TEXT NOT NULL, source_type TEXT DEFAULT 'note', source_url TEXT, expires_at TEXT, created_at TEXT DEFAULT (datetime('now')))",
+    "CREATE TABLE IF NOT EXISTS material_chunks (id INTEGER PRIMARY KEY AUTOINCREMENT, material_id TEXT NOT NULL, chunk_index INTEGER NOT NULL, content TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS student_profile (id INTEGER PRIMARY KEY CHECK (id = 1), name TEXT NOT NULL, grade_level TEXT, school TEXT, study_goals TEXT, strong_subjects TEXT, weak_subjects TEXT, preferred_style TEXT DEFAULT 'balanced', daily_hours TEXT DEFAULT '2-3', notes TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))",
     "CREATE TABLE IF NOT EXISTS chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, role TEXT NOT NULL, content TEXT NOT NULL, actions_taken TEXT, created_at TEXT DEFAULT (datetime('now')))",
     "CREATE TABLE IF NOT EXISTS ai_settings (id INTEGER PRIMARY KEY CHECK (id = 1), provider TEXT DEFAULT 'groq', base_url TEXT DEFAULT 'https://api.groq.com/openai/v1', api_key TEXT, model TEXT DEFAULT 'llama-3.3-70b-versatile', context_notes TEXT, updated_at TEXT DEFAULT (datetime('now')))",
   ], "write");
   try {
-    await db.execute("ALTER TABLE ai_settings ADD COLUMN context_notes TEXT");
+    await db.execute("CREATE VIRTUAL TABLE IF NOT EXISTS material_chunks_fts USING fts5(content, content_rowid='id')");
   } catch {
-    // column already exists
+    // FTS5 may not be available in all environments
   }
   _initDone = true;
 }
