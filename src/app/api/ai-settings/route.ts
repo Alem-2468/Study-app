@@ -20,17 +20,17 @@ const PRESETS: Record<string, { base_url: string; models: string[]; default_mode
   },
   openai: {
     base_url: "https://api.openai.com/v1",
-    models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"],
+    models: ["gpt-4o", "gpt-4o-mini"],
     default_model: "gpt-4o-mini",
   },
   anthropic: {
     base_url: "https://api.anthropic.com/v1",
-    models: ["claude-sonnet-4-20250514", "claude-haiku-4-20250414"],
-    default_model: "claude-sonnet-4-20250514",
+    models: ["claude-sonnet-5-5", "claude-haiku-5-5", "claude-opus-5-5"],
+    default_model: "claude-sonnet-5-5",
   },
   gemini: {
     base_url: "https://generativelanguage.googleapis.com/v1beta/openai",
-    models: ["gemini-3.8-flash"],
+    models: ["gemini-3.8-flash", "gemini-3.1-pro-preview"],
     default_model: "gemini-3.8-flash",
   },
   custom: {

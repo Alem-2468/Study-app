@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAiClient } from "@/lib/ai";
 
 const VISION_MODELS = [
-  "gpt-4o", "gpt-4o-mini", "gpt-4-turbo",
-  "gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.5-pro",
-  "claude-sonnet-4-20250514", "claude-haiku-4-20250414",
-  "meta-llama/llama-4-scout-17b-16e-instruct",
+  "gpt-4o", "gpt-4o-mini",
+  "gemini-3.8-flash", "gemini-3.1-pro",
+  "claude-sonnet-5-5", "claude-haiku-5-5", "claude-opus-5-5",
 ];
 
 function supportsVision(model: string): boolean {
