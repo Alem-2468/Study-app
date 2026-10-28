@@ -6,8 +6,8 @@ let _initDone = false;
 export function getDb(): Client {
   if (!_client) {
     _client = createClient({
-      url: process.env.TURSO_URL ?? "file:study-planner.db",
-      authToken: process.env.TURSO_AUTH_TOKEN,
+      url: process.env.TURSO_URL ?? process.env.TursoURL ?? "file:study-planner.db",
+      authToken: process.env.TURSO_AUTH_TOKEN ?? process.env.turso_token,
     });
   }
   return _client;
