@@ -12,14 +12,17 @@ async function getAiConfig() {
     return { baseURL: row.base_url, apiKey: row.api_key, model: row.model };
   }
   return {
-    baseURL: process.env.AI_BASE_URL ?? "http://localhost:20128/v1",
-    apiKey: process.env.AI_API_KEY ?? "sk-no-key",
-    model: process.env.AI_MODEL ?? "auto",
+    baseURL: process.env.AI_BASE_URL ?? "https://api.groq.com/openai/v1",
+    apiKey: process.env.AI_API_KEY ?? process.env.GROQ_API_KEY ?? "",
+    model: process.env.AI_MODEL ?? "llama-3.3-70b-versatile",
   };
 }
 
 export async function getAiClient() {
   const cfg = await getAiConfig();
+  if (!cfg.apiKey) {
+    throw new Error("No AI provider configured. Go to Settings and add your API key (Groq is free!).");
+  }
   return {
     client: new OpenAI({ baseURL: cfg.baseURL, apiKey: cfg.apiKey }),
     model: cfg.model,
