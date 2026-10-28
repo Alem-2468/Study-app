@@ -25,7 +25,7 @@ export async function initDb() {
     "CREATE TABLE IF NOT EXISTS material_chunks (id INTEGER PRIMARY KEY AUTOINCREMENT, material_id TEXT NOT NULL, chunk_index INTEGER NOT NULL, content TEXT NOT NULL)",
     "CREATE TABLE IF NOT EXISTS student_profile (id INTEGER PRIMARY KEY CHECK (id = 1), name TEXT NOT NULL, grade_level TEXT, school TEXT, study_goals TEXT, strong_subjects TEXT, weak_subjects TEXT, preferred_style TEXT DEFAULT 'balanced', daily_hours TEXT DEFAULT '2-3', notes TEXT, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))",
     "CREATE TABLE IF NOT EXISTS chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, role TEXT NOT NULL, content TEXT NOT NULL, actions_taken TEXT, created_at TEXT DEFAULT (datetime('now')))",
-    "CREATE TABLE IF NOT EXISTS ai_settings (id INTEGER PRIMARY KEY CHECK (id = 1), provider TEXT DEFAULT 'groq', base_url TEXT DEFAULT 'https://api.groq.com/openai/v1', api_key TEXT, model TEXT DEFAULT 'llama-3.3-70b-versatile', context_notes TEXT, updated_at TEXT DEFAULT (datetime('now')))",
+    "CREATE TABLE IF NOT EXISTS ai_settings (id INTEGER PRIMARY KEY CHECK (id = 1), provider TEXT DEFAULT 'groq', base_url TEXT DEFAULT 'https://api.groq.com/openai/v1', api_key TEXT, model TEXT DEFAULT 'openai/gpt-oss-120b', context_notes TEXT, updated_at TEXT DEFAULT (datetime('now')))",
   ], "write");
   try {
     await db.execute("CREATE VIRTUAL TABLE IF NOT EXISTS material_chunks_fts USING fts5(content, content_rowid='id')");

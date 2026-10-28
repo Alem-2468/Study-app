@@ -14,7 +14,7 @@ async function getAiConfig() {
   return {
     baseURL: process.env.AI_BASE_URL ?? "https://api.groq.com/openai/v1",
     apiKey: process.env.AI_API_KEY ?? process.env.GROQ_API_KEY ?? "",
-    model: process.env.AI_MODEL ?? "llama-3.3-70b-versatile",
+    model: process.env.AI_MODEL ?? "openai/gpt-oss-120b",
   };
 }
 
