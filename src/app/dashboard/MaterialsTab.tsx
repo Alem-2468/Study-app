@@ -87,7 +87,10 @@ export default function MaterialsTab({ courses, exams }: { courses: Course[]; ex
           setUploadProgress(`Extracting page ${i}/${pdf.numPages}...`);
           const page = await pdf.getPage(i);
           const content = await page.getTextContent();
-          text += content.items.map((item: { str?: string }) => ("str" in item ? item.str : "")).join(" ") + "\n\n";
+          text += content.items.map((item: unknown) => {
+            const ti = item as { str?: string };
+            return ti.str ?? "";
+          }).join(" ") + "\n\n";
         }
         if (!text.trim()) throw new Error("No text found in PDF. It might be a scanned document — try uploading as an image instead.");
         await saveMaterial(file.name.replace(/\.pdf$/i, ""), text, "pdf");

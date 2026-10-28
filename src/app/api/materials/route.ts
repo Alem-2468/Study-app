@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
     try {
       await db.execute({
         sql: "INSERT INTO material_chunks_fts(rowid, content) VALUES (?, ?)",
-        args: [res.lastInsertRowid, chunks[i]],
+        args: [Number(res.lastInsertRowid), chunks[i]],
       });
     } catch {
       // FTS5 not available, search will fall back to LIKE
