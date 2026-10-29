@@ -46,11 +46,16 @@ export async function GET() {
   const result = await db.execute("SELECT * FROM ai_settings WHERE id = 1");
   const settings = result.rows[0] as unknown as AiSettingsRow | undefined;
 
+  const hasEnvKey = !!process.env.GROQ_API_KEY;
+  const isGroq = settings?.provider === "groq" || !settings;
+  const effectiveKey = settings?.api_key || (isGroq && hasEnvKey);
+
   return NextResponse.json({
     settings: settings
-      ? { provider: settings.provider, base_url: settings.base_url, api_key: settings.api_key ? "••••" + settings.api_key.slice(-4) : null, model: settings.model, has_key: !!settings.api_key }
-      : null,
+      ? { provider: settings.provider, base_url: settings.base_url, api_key: settings.api_key ? "••••" + settings.api_key.slice(-4) : (isGroq && hasEnvKey ? "Server key" : null), model: settings.model, has_key: !!effectiveKey }
+      : { provider: "groq", base_url: "https://api.groq.com/openai/v1", api_key: hasEnvKey ? "Server key" : null, model: "openai/gpt-oss-120b", has_key: hasEnvKey },
     presets: PRESETS,
+    groq_server_key: hasEnvKey,
   });
 }
 

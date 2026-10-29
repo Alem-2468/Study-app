@@ -3,18 +3,30 @@ import { getDb, initDb } from "@/lib/db";
 
 interface AiSettingsRow { provider: string; base_url: string; api_key: string | null; model: string }
 
+const GROQ_FALLBACK = {
+  baseURL: "https://api.groq.com/openai/v1",
+  model: "openai/gpt-oss-120b",
+};
+
 async function getAiConfig() {
   await initDb();
   const db = getDb();
   const res = await db.execute("SELECT provider, base_url, api_key, model FROM ai_settings WHERE id = 1");
   const row = res.rows[0] as unknown as AiSettingsRow | undefined;
+
+  if (row?.provider === "groq") {
+    const key = process.env.GROQ_API_KEY || process.env.AI_API_KEY || row.api_key || "";
+    return { baseURL: row.base_url || GROQ_FALLBACK.baseURL, apiKey: key, model: row.model || GROQ_FALLBACK.model };
+  }
+
   if (row?.api_key && row.base_url) {
     return { baseURL: row.base_url, apiKey: row.api_key, model: row.model };
   }
+
   return {
-    baseURL: process.env.AI_BASE_URL ?? "https://api.groq.com/openai/v1",
+    baseURL: process.env.AI_BASE_URL ?? GROQ_FALLBACK.baseURL,
     apiKey: process.env.AI_API_KEY ?? process.env.GROQ_API_KEY ?? "",
-    model: process.env.AI_MODEL ?? "openai/gpt-oss-120b",
+    model: process.env.AI_MODEL ?? GROQ_FALLBACK.model,
   };
 }
 
@@ -26,6 +38,15 @@ export async function getAiClient() {
   return {
     client: new OpenAI({ baseURL: cfg.baseURL, apiKey: cfg.apiKey }),
     model: cfg.model,
+  };
+}
+
+export function getGroqFallbackClient(): { client: OpenAI; model: string } | null {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) return null;
+  return {
+    client: new OpenAI({ baseURL: GROQ_FALLBACK.baseURL, apiKey: key }),
+    model: GROQ_FALLBACK.model,
   };
 }
 

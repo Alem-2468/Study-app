@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, initDb } from "@/lib/db";
-import { getAiClient } from "@/lib/ai";
+import { getAiClient, getGroqFallbackClient } from "@/lib/ai";
 import crypto from "crypto";
 
 interface ProfileRow { name: string; grade_level?: string; school?: string; study_goals?: string; strong_subjects?: string; weak_subjects?: string; preferred_style?: string; daily_hours?: string; notes?: string }
@@ -222,8 +222,8 @@ export async function POST(req: NextRequest) {
   try {
     const { client, model } = await getAiClient();
     const systemPrompt = buildSystemPrompt(ctx) + materialContext;
-    const chatReq = () => client.chat.completions.create({
-      model,
+    const makeReq = (c: typeof client, m: string) => c.chat.completions.create({
+      model: m,
       messages: [
         { role: "system", content: systemPrompt },
         ...cleanHistory,
@@ -232,13 +232,19 @@ export async function POST(req: NextRequest) {
     });
     let res;
     try {
-      res = await chatReq();
-    } catch (retryErr) {
-      if (retryErr instanceof Error && retryErr.message.includes("503")) {
+      res = await makeReq(client, model);
+    } catch (primaryErr) {
+      if (primaryErr instanceof Error && primaryErr.message.includes("503")) {
         await new Promise(r => setTimeout(r, 2000));
-        res = await chatReq();
-      } else {
-        throw retryErr;
+        try { res = await makeReq(client, model); } catch { /* fall through to fallback */ }
+      }
+      if (!res) {
+        const fallback = getGroqFallbackClient();
+        if (fallback) {
+          res = await makeReq(fallback.client, fallback.model);
+        } else {
+          throw primaryErr;
+        }
       }
     }
 
