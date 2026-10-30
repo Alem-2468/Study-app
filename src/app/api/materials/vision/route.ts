@@ -32,8 +32,8 @@ export async function POST(req: NextRequest) {
       ({ client, model } = groqVision);
     }
 
-    const res = await client.chat.completions.create({
-      model,
+    const makeReq = (c: typeof client, m: string) => c.chat.completions.create({
+      model: m,
       messages: [
         {
           role: "user",
@@ -51,6 +51,15 @@ export async function POST(req: NextRequest) {
       ],
       max_tokens: 4000,
     });
+
+    let res;
+    try {
+      res = await makeReq(client, model);
+    } catch (primaryErr) {
+      const groqVision = getGroqVisionClient();
+      if (!groqVision || model === groqVision.model) throw primaryErr;
+      res = await makeReq(groqVision.client, groqVision.model);
+    }
 
     const text = res.choices[0]?.message?.content ?? "";
     if (!text) {
