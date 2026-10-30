@@ -15,7 +15,7 @@ interface AiSettingsRow {
 const PRESETS: Record<string, { base_url: string; models: string[]; default_model: string }> = {
   groq: {
     base_url: "https://api.groq.com/openai/v1",
-    models: ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.1-8b-instant"],
+    models: ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.1-8b-instant"],
     default_model: "openai/gpt-oss-120b",
   },
   openai: {

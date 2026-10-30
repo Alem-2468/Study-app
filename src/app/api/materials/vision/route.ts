@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAiClient } from "@/lib/ai";
+import { getAiClient, getGroqVisionClient } from "@/lib/ai";
 
 const VISION_MODELS = [
+  "llama-4-scout", "llama-4-maverick",
   "gpt-4o", "gpt-4o-mini",
   "gemini-3.8-flash", "gemini-3.1-pro",
   "claude-sonnet-5-5", "claude-haiku-5-5", "claude-opus-5-5",
@@ -18,13 +19,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { client, model } = await getAiClient();
+    let { client, model } = await getAiClient();
 
     if (!supportsVision(model)) {
-      return NextResponse.json(
-        { error: "Your current AI model doesn't support image analysis. Upload PDFs or DOCX files instead, or switch to a vision-capable model (like GPT-4o or Gemini) in Settings." },
-        { status: 422 }
-      );
+      const groqVision = getGroqVisionClient();
+      if (!groqVision) {
+        return NextResponse.json(
+          { error: "Your current AI model doesn't support image analysis. Upload PDFs or DOCX files instead, or switch to a vision-capable model (like GPT-4o or Gemini) in Settings." },
+          { status: 422 }
+        );
+      }
+      ({ client, model } = groqVision);
     }
 
     const res = await client.chat.completions.create({

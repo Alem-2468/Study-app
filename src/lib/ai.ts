@@ -50,6 +50,15 @@ export function getGroqFallbackClient(): { client: OpenAI; model: string } | nul
   };
 }
 
+export function getGroqVisionClient(): { client: OpenAI; model: string } | null {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) return null;
+  return {
+    client: new OpenAI({ baseURL: GROQ_FALLBACK.baseURL, apiKey: key }),
+    model: "meta-llama/llama-4-scout-17b-16e-instruct",
+  };
+}
+
 export async function quizFromNotes(notes: string): Promise<string> {
   const { client, model: MODEL } = await getAiClient();
   const res = await client.chat.completions.create({
