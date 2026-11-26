@@ -193,7 +193,7 @@ Inline markup you MUST use (no other markdown):
 - [[text]] = important concept (shown red)
 - {{text}} = key idea (shown green)
 - ==text== = keyword (yellow highlight)
-Use them often but not on whole sentences. Do not invent facts that are not in the material.
+Use all four, often, but never on whole sentences. Copy names and terms exactly as written in the material (check spelling). Do not invent facts that are not in the material.
 Return ONLY JSON, no code fences:
 {"title": "string", "blocks": [
   {"type":"heading","text":"..."},

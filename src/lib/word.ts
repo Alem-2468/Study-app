@@ -20,10 +20,10 @@ export type WordBlock =
   | { type: "table"; headers: string[]; rows: string[][] };
 export interface WordDoc { title: string; blocks: WordBlock[] }
 
-/** Inline markup: **bold**, [[red concept]], {{green key idea}}, ==yellow keyword==. */
+/** Inline markup: **bold**, *italic*, [[red concept]], {{green key idea}}, ==yellow keyword==. */
 export function runs(text: string, base: { bold?: boolean; color?: string; size?: number } = {}): TextRun[] {
   const out: TextRun[] = [];
-  const re = /\*\*(.+?)\*\*|\[\[(.+?)\]\]|\{\{(.+?)\}\}|==(.+?)==/g;
+  const re = /\*\*(.+?)\*\*|\[\[(.+?)\]\]|\{\{(.+?)\}\}|==(.+?)==|\*([^*\s][^*]*?)\*/g;
   let last = 0;
   let m: RegExpExecArray | null;
   const size = base.size ?? BODY;
@@ -36,6 +36,7 @@ export function runs(text: string, base: { bold?: boolean; color?: string; size?
     else if (m[2] !== undefined) push(m[2], { bold: true, color: RED });
     else if (m[3] !== undefined) push(m[3], { bold: true, color: GREEN });
     else if (m[4] !== undefined) push(m[4], { highlight: HighlightColor.YELLOW });
+    else if (m[5] !== undefined) push(m[5], { italics: true });
     last = re.lastIndex;
   }
   push(text.slice(last));
