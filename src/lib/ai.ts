@@ -181,10 +181,7 @@ Return ONLY a JSON array, no markdown, no explanation. Each object:
 
 /** Turn study material into a structured Word document (Luis's colour system). */
 export async function wordFromMaterial(title: string, content: string, instructions?: string): Promise<import("@/lib/word").WordDoc> {
-  const { client, model: MODEL } = await getAiClient();
-  const res = await client.chat.completions.create({
-    model: MODEL,
-    messages: [
+  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       {
         role: "system",
         content:
@@ -209,10 +206,19 @@ Return ONLY JSON, no code fences:
         role: "user",
         content: `Material title: ${title}\n${instructions ? `Extra instructions: ${instructions}\n` : ""}\nMaterial:\n${content}`,
       },
-    ],
-    max_tokens: 6000,
-  });
-  const raw = res.choices[0]?.message?.content ?? "";
+  ];
+  let raw = "";
+  try {
+    const { client, model } = await getAiClient();
+    const res = await client.chat.completions.create({ model, messages, max_tokens: 6000 });
+    raw = res.choices[0]?.message?.content ?? "";
+  } catch (e) {
+    // If the configured provider fails (bad key, quota), fall back to the free Groq key.
+    const fb = getGroqFallbackClient();
+    if (!fb) throw e;
+    const res = await fb.client.chat.completions.create({ model: fb.model, messages, max_tokens: 6000 });
+    raw = res.choices[0]?.message?.content ?? "";
+  }
   const match = raw.match(/\{[\s\S]*\}/);
   if (!match) throw new Error("The AI didn't return a document. Try again.");
   const doc = JSON.parse(match[0]);
