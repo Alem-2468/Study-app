@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb, initDb } from "@/lib/db";
 import { getAiClient, getGroqFallbackClient } from "@/lib/ai";
 import crypto from "crypto";
+import { STUDY_RULES } from "@/lib/study-rules";
 
 interface ProfileRow { name: string; grade_level?: string; school?: string; study_goals?: string; strong_subjects?: string; weak_subjects?: string; preferred_style?: string; daily_hours?: string; notes?: string }
 interface CourseRow { id: string; name: string; color: string; teacher_name?: string }
@@ -36,8 +37,9 @@ function buildSystemPrompt(ctx: Awaited<ReturnType<typeof getContext>>) {
   const today = new Date().toISOString().split("T")[0];
   const { profile, courses, assignments, exams, handoffNotes } = ctx;
 
-  let prompt = `You are a friendly, smart study assistant for a student. Today is ${today}.
+  let prompt = `You are a study assistant for a student. Today is ${today}.
 
+${STUDY_RULES}
 `;
 
   if (profile) {
@@ -98,13 +100,10 @@ Available actions:
 IMPORTANT RULES:
 - If the student mentions a course that doesn't exist yet, create it first, then create the exam/assignment for it.
 - Pick appropriate colors for new courses (use varied hex colors like #7c3aed, #06b6d4, #10b981, #f59e0b, #ef4444, #ec4899, #3b82f6).
-- Always be conversational and friendly. Use the student's name.
-- After creating things, confirm what you did in plain language.
-- Ask follow-up questions to help them study better: "Do you want me to generate a study schedule?" or "Want me to quiz you on those topics?"
+- After creating things, confirm what you did in one short line.
 - If something is ambiguous (like a date), ask for clarification.
-- You can also quiz, explain topics, and summarize — just respond naturally.
-- Keep responses concise but helpful.
-- Speak naturally like a friend who's also a tutor.`;
+- You can also quiz, explain topics, and summarize.
+- Follow Luis's study rules above for tone and format: short, direct, no filler, no motivational talk.`;
 
   return prompt;
 }

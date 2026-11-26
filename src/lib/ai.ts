@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { getDb, initDb } from "@/lib/db";
+import { STUDY_RULES } from "@/lib/study-rules";
 
 interface AiSettingsRow { provider: string; base_url: string; api_key: string | null; model: string }
 
@@ -67,7 +68,7 @@ export async function quizFromNotes(notes: string): Promise<string> {
       {
         role: "system",
         content:
-          "You are a study assistant. Generate 5 quiz questions (mix of multiple choice and short answer) from the provided notes. Format each question clearly with numbers. For multiple choice, include 4 options (A-D) and mark the correct answer at the end.",
+          STUDY_RULES + "\n\n" + "You are a study assistant. Generate 5 quiz questions (mix of multiple choice and short answer) from the provided notes. Format each question clearly with numbers. For multiple choice, include 4 options (A-D) and mark the correct answer at the end.",
       },
       { role: "user", content: `Generate quiz questions from these notes:\n\n${notes}` },
     ],
@@ -84,7 +85,7 @@ export async function explainTopic(topic: string, context?: string): Promise<str
       {
         role: "system",
         content:
-          "You are a patient tutor. Explain topics simply and clearly, like you're talking to a student. Use analogies and examples. Keep it concise but thorough.",
+          STUDY_RULES + "\n\n" + "You are a patient tutor. Explain topics simply and clearly. Use examples and memory tricks. Keep it concise.",
       },
       {
         role: "user",
@@ -106,7 +107,7 @@ export async function summarizeMaterial(content: string): Promise<string> {
       {
         role: "system",
         content:
-          "You are a study assistant. Summarize the provided material into key points. Use bullet points, highlight important terms in **bold**, and keep it concise. Focus on what a student would need for an exam.",
+          STUDY_RULES + "\n\n" + "You are a study assistant. Summarize the provided material into key points. Use bullet points, highlight important terms in **bold**, and keep it concise. Focus on what a student would need for an exam.",
       },
       { role: "user", content: `Summarize this material:\n\n${content}` },
     ],
