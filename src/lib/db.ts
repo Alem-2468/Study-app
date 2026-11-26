@@ -27,6 +27,11 @@ export async function initDb() {
     "CREATE TABLE IF NOT EXISTS chat_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, role TEXT NOT NULL, content TEXT NOT NULL, actions_taken TEXT, created_at TEXT DEFAULT (datetime('now')))",
     "CREATE TABLE IF NOT EXISTS ai_settings (id INTEGER PRIMARY KEY CHECK (id = 1), provider TEXT DEFAULT 'groq', base_url TEXT DEFAULT 'https://api.groq.com/openai/v1', api_key TEXT, model TEXT DEFAULT 'openai/gpt-oss-120b', context_notes TEXT, updated_at TEXT DEFAULT (datetime('now')))",
   ], "write");
+  // Older databases have a materials table without these columns; add them if missing.
+  const matCols = (await db.execute("PRAGMA table_info(materials)")).rows.map((r) => String((r as unknown as { name: string }).name));
+  for (const [col, def] of [["exam_id", "TEXT"], ["source_type", "TEXT DEFAULT 'note'"], ["source_url", "TEXT"], ["expires_at", "TEXT"]] as const) {
+    if (!matCols.includes(col)) await db.execute(`ALTER TABLE materials ADD COLUMN ${col} ${def}`);
+  }
   try {
     await db.execute("CREATE VIRTUAL TABLE IF NOT EXISTS material_chunks_fts USING fts5(content, content_rowid='id')");
   } catch {
