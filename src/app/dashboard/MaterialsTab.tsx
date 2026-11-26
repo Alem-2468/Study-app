@@ -34,6 +34,7 @@ export default function MaterialsTab({ courses, exams, onAskAI }: { courses: Cou
   const [uploadCourse, setUploadCourse] = useState("");
   const [uploadExam, setUploadExam] = useState("");
   const [error, setError] = useState("");
+  const [wordBusy, setWordBusy] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadMaterials(); }, []);
@@ -197,6 +198,37 @@ export default function MaterialsTab({ courses, exams, onAskAI }: { courses: Cou
     }
   }
 
+  async function makeWord(m: Material) {
+    setError("");
+    setWordBusy(m.id);
+    try {
+      const res = await fetch("/api/materials/word", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: m.id }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Could not make the Word document");
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get("Content-Disposition") ?? "";
+      const name = decodeURIComponent(cd.match(/filename\*=UTF-8''([^;]+)/)?.[1] ?? "") || `${m.title}.docx`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not make the Word document");
+    } finally {
+      setWordBusy(null);
+    }
+  }
+
   async function deleteMaterial(id: string) {
     await fetch(`/api/materials?id=${id}`, { method: "DELETE" });
     setMaterials(prev => prev.filter(m => m.id !== id));
@@ -337,6 +369,12 @@ export default function MaterialsTab({ courses, exams, onAskAI }: { courses: Cou
         </div>
       )}
 
+      {error && !showUpload && (
+        <div className="p-3 rounded-xl text-sm font-medium" style={{ background: "var(--danger-light)", color: "var(--danger)" }}>
+          {error}
+        </div>
+      )}
+
       {/* Materials list */}
       {materials.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -369,6 +407,18 @@ export default function MaterialsTab({ courses, exams, onAskAI }: { courses: Cou
                   )}
                 </div>
               </div>
+              <button
+                onClick={() => makeWord(m)}
+                disabled={wordBusy !== null}
+                title="Make Word apunts from this material"
+                className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 disabled:opacity-50 shrink-0"
+              >
+                {wordBusy === m.id ? (
+                  <><span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> Making…</>
+                ) : (
+                  <>📝 Word</>
+                )}
+              </button>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 {onAskAI && (
                   <>

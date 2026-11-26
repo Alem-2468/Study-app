@@ -178,3 +178,44 @@ Return ONLY a JSON array, no markdown, no explanation. Each object:
     return [];
   }
 }
+
+/** Turn study material into a structured Word document (Luis's colour system). */
+export async function wordFromMaterial(title: string, content: string, instructions?: string): Promise<import("@/lib/word").WordDoc> {
+  const { client, model: MODEL } = await getAiClient();
+  const res = await client.chat.completions.create({
+    model: MODEL,
+    messages: [
+      {
+        role: "system",
+        content:
+          STUDY_RULES + "\n\n" +
+          `You turn class material into study notes ("apunts") for a Word document. Write in the SAME language as the material.
+Follow the 80/20 rule: only what matters for the exam. Clear headings, short explanations, bullet points, a concrete example for each idea when useful ("**Exemple:** ..."), and a table whenever two or more things are compared.
+Inline markup you MUST use (no other markdown):
+- **text** = bold
+- [[text]] = important concept (shown red)
+- {{text}} = key idea (shown green)
+- ==text== = keyword (yellow highlight)
+Use them often but not on whole sentences. Do not invent facts that are not in the material.
+Return ONLY JSON, no code fences:
+{"title": "string", "blocks": [
+  {"type":"heading","text":"..."},
+  {"type":"paragraph","text":"..."},
+  {"type":"bullets","items":["...", {"text":"...","sub":["..."]}]},
+  {"type":"table","headers":["Aspecte","A","B"],"rows":[["...","...","..."]]}
+]}`,
+      },
+      {
+        role: "user",
+        content: `Material title: ${title}\n${instructions ? `Extra instructions: ${instructions}\n` : ""}\nMaterial:\n${content}`,
+      },
+    ],
+    max_tokens: 6000,
+  });
+  const raw = res.choices[0]?.message?.content ?? "";
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("The AI didn't return a document. Try again.");
+  const doc = JSON.parse(match[0]);
+  if (!Array.isArray(doc.blocks) || doc.blocks.length === 0) throw new Error("The AI returned an empty document. Try again.");
+  return { title: String(doc.title || title), blocks: doc.blocks };
+}
